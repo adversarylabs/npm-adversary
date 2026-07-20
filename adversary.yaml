@@ -1,0 +1,33 @@
+name: npm
+version: 0.0.0
+description: Reviews npm projects for dangerous lifecycle scripts, mutable dependencies, and missing lockfiles.
+
+triggers:
+  manual: true
+  files_changed:
+    - "package.json"
+    - "**/package.json"
+    - "package-lock.json"
+    - "**/package-lock.json"
+    - ".npmrc"
+    - "**/.npmrc"
+
+runtime:
+  name: node
+  version: "22"
+  command:
+    - dist/index.js
+
+permissions:
+  enforcement: advisory
+  filesystem:
+    read:
+      - .
+    write:
+      - .adversary/results
+  network: false
+  environment:
+    allow: []
+
+findings:
+  format: adversary.review.v1
