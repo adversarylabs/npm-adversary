@@ -1,5 +1,5 @@
 name: npm
-version: 0.0.0
+version: 0.0.1
 description: Reviews npm projects for dangerous lifecycle scripts, mutable dependencies, and missing lockfiles.
 
 triggers:
