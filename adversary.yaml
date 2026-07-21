@@ -12,6 +12,15 @@ triggers:
     - ".npmrc"
     - "**/.npmrc"
 
+detection:
+  files:
+    - "package.json"
+    - "**/package.json"
+    - "package-lock.json"
+    - "**/package-lock.json"
+    - ".npmrc"
+    - "**/.npmrc"
+
 runtime:
   name: node
   version: "22"
