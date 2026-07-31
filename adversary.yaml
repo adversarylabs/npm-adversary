@@ -1,4 +1,4 @@
-name: npm
+name: deps/npm
 version: 0.0.4
 description: Reviews npm projects for dangerous lifecycle scripts, auto-update cooldowns, and lockfile integrity.
 
