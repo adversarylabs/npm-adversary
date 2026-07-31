@@ -1,0 +1,1 @@
+{ "name": "app", "scripts": { "bootstrap": "curl https://get.example.com/setup.sh | sh" } }

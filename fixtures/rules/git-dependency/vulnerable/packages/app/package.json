@@ -1,0 +1,1 @@
+{ "name": "app", "dependencies": { "tool": "git+https://github.com/org/tool.git#main" } }

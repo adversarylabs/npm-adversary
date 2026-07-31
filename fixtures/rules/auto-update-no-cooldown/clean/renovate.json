@@ -1,0 +1,5 @@
+{
+  "extends": ["config:recommended"],
+  "automerge": true,
+  "minimumReleaseAge": "7 days"
+}

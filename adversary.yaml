@@ -1,6 +1,6 @@
 name: npm
-version: 0.0.3
-description: Reviews npm projects for dangerous lifecycle scripts, mutable dependencies, and missing lockfiles.
+version: 0.0.4
+description: Reviews npm projects for dangerous lifecycle scripts, auto-update cooldowns, and lockfile integrity.
 
 triggers:
   manual: true
@@ -20,6 +20,9 @@ detection:
     - "**/package-lock.json"
     - ".npmrc"
     - "**/.npmrc"
+    - "renovate.json"
+    - ".github/renovate.json5"
+    - ".github/dependabot.yml"
 
 runtime:
   name: node

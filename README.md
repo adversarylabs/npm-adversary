@@ -1,22 +1,41 @@
-# npm adversary
+# npm
 
-Reviews npm projects for dangerous lifecycle scripts, mutable dependencies, and missing lockfiles.
+**npm** reviews Node package metadata for **dangerous lifecycle scripts, auto-update cooldowns, registry TLS, and lockfile integrity**.
 
-## Checks
+It is a **package supply-chain reviewer**, not a malware scanner of node_modules. When it reports, install or auto-update paths can execute or pull untrusted code.
 
-- **npm lifecycle downloads and executes remote code:** Vendor or checksum installer inputs.
-- **npm dependency uses a mutable version:** Use reviewed versions and commit the lockfile.
-- **npm project has no lockfile:** Commit a package lockfile.
+## What it does
 
-## Development
+1. **Discovers** package.json, lockfiles, .npmrc, and Renovate/Dependabot config.
+2. **Runs deterministic detectors** for lifecycle scripts, ranges, lockfiles, and cooldowns.
+3. **Synthesizes a review** with file:line evidence.
+4. Optionally **enhances** with a model when provided.
 
-```sh
-npm ci
-npm test
-adversary validate .
-adversary pack --check .
-```
+It never executes the scanned project as the product under review, never installs dependencies into it, and never needs network access to the target repository.
 
-## Automatic detection
+## What it detects
 
-`adversary auto` selects the npm adversary when changes include `package.json` or `**/package.json`, plus the other domain-specific patterns declared in `adversary.yaml`. Unrelated changes do not select it.
+Every **shipped rule id**, severity, and short description lives in **[CHECKS.md](CHECKS.md)**.
+
+Highlights:
+
+| Area | Examples |
+| --- | --- |
+| Lifecycle | curl|bash postinstall; obfuscated eval/base64 scripts |
+| Automation | Renovate/Dependabot automerge without release-age cooldown |
+| Integrity | Missing lockfile; * ranges; mutable git deps |
+| Registry | HTTP registry URLs |
+
+### Ownership boundaries
+
+| Concern | Owned by |
+| --- | --- |
+| Yarn / pnpm lock semantics | `yarn` / `pnpm` adversaries |
+| Generic secret scanning | [`security/secrets`](https://github.com/adversarylabs/secrets-adversary) |
+| Dockerfile Node bases | [`container/dockerfile`](https://github.com/adversarylabs/dockerfile-adversary) |
+
+## Precision stance
+
+- **High confidence** only for deterministic, evidence-backed patterns.
+- Clean fixtures must stay quiet; vulnerable fixtures must fire.
+- Prefer missing a weak signal over a false positive on normal production code.

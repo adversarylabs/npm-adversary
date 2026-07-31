@@ -5,9 +5,9 @@ import { createApp } from "../src/index.ts";
 
 const fixture = (name: string) => new URL(`../fixtures/${name}`, import.meta.url).pathname;
 const review = (name: string, raw = false) => createApp().run({ input: { source: { path: fixture(name) } }, includeRawObservations: raw });
-const ruleCases = [{"key":"lifecycle-download","id":"npm.lifecycle-download"},{"key":"unbounded-dependency","id":"npm.unbounded-dependency"},{"key":"missing-lockfile","id":"npm.missing-lockfile"}];
+const ruleCases = [{"key": "lifecycle-remote-exec", "id": "npm.lifecycle-remote-exec"}, {"key": "lifecycle-download", "id": "npm.lifecycle-download"}, {"key": "lifecycle-obfuscated", "id": "npm.lifecycle-obfuscated"}, {"key": "script-curl-pipe", "id": "npm.script-curl-pipe"}, {"key": "publish-config-insecure-registry", "id": "npm.publish-config-insecure-registry"}, {"key": "auto-update-no-cooldown", "id": "npm.auto-update-no-cooldown"}, {"key": "unbounded-dependency", "id": "npm.unbounded-dependency"}, {"key": "missing-lockfile", "id": "npm.missing-lockfile"}, {"key": "git-dependency", "id": "npm.git-dependency"}];
 
-test("every initial rule has focused vulnerable and clean coverage", async () => {
+test("every shipped rule has focused vulnerable and clean coverage", async () => {
   for (const rule of ruleCases) {
     const vulnerable = await review(`rules/${rule.key}/vulnerable`, true);
     assert.equal(vulnerable.findings.some((finding) => finding.ruleId === rule.id), true, `${rule.id} did not detect its vulnerable fixture`);
