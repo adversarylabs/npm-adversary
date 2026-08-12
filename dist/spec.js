@@ -233,6 +233,12 @@ export const spec = {
                     "pattern": "\\\"dependencies\\\"\\s*:\\s*\\{[^}]{0,800}\\\"[^\\\"]+\\\"\\s*:\\s*\\\"(?:\\*|latest|>=0\\.0\\.0)\\\"",
                     "flags": "i"
                 },
+                "anchors": [
+                    {
+                        "pattern": "\\\"[^\\\"]+\\\"\\s*:\\s*\\\"(?:\\*|latest|>=0\\.0\\.0)\\\"",
+                        "flags": "i"
+                    }
+                ],
                 "requires": []
             }
         },
@@ -287,6 +293,12 @@ export const spec = {
                     "pattern": "\\\"dependencies\\\"\\s*:\\s*\\{[^}]*git(?:\\+https?)?:[^\\\"']+#(?:main|master)[\\\"']",
                     "flags": "i"
                 },
+                "anchors": [
+                    {
+                        "pattern": "\\\"[^\\\"]+\\\"\\s*:\\s*\\\"git(?:\\+https?)?:[^\\\"']+#(?:main|master)[\\\"']",
+                        "flags": "i"
+                    }
+                ],
                 "requires": []
             }
         }

@@ -1,7 +1,7 @@
 import { type Confidence, type Severity } from "@adversarylabs/sdk";
 
 export interface MatchExpression { pattern: string; flags: string }
-interface ContentMatch { kind: "content"; files: string[]; pattern: MatchExpression; requires: MatchExpression[] }
+interface ContentMatch { kind: "content"; files: string[]; pattern: MatchExpression; anchors?: MatchExpression[]; requires: MatchExpression[] }
 interface MissingContentMatch { kind: "missing-content"; files: string[]; trigger: MatchExpression; required: MatchExpression }
 interface MissingFileMatch { kind: "missing-file"; triggerFiles: string[]; requiredFiles: string[] }
 interface DirectDependencyDriftMatch { kind: "direct-dependency-drift"; files: string[] }
@@ -247,6 +247,12 @@ export const spec = {
           "pattern": "\\\"dependencies\\\"\\s*:\\s*\\{[^}]{0,800}\\\"[^\\\"]+\\\"\\s*:\\s*\\\"(?:\\*|latest|>=0\\.0\\.0)\\\"",
           "flags": "i"
         },
+        "anchors": [
+          {
+            "pattern": "\\\"[^\\\"]+\\\"\\s*:\\s*\\\"(?:\\*|latest|>=0\\.0\\.0)\\\"",
+            "flags": "i"
+          }
+        ],
         "requires": []
       }
     },
@@ -301,6 +307,12 @@ export const spec = {
           "pattern": "\\\"dependencies\\\"\\s*:\\s*\\{[^}]*git(?:\\+https?)?:[^\\\"']+#(?:main|master)[\\\"']",
           "flags": "i"
         },
+        "anchors": [
+          {
+            "pattern": "\\\"[^\\\"]+\\\"\\s*:\\s*\\\"git(?:\\+https?)?:[^\\\"']+#(?:main|master)[\\\"']",
+            "flags": "i"
+          }
+        ],
         "requires": []
       }
     }
