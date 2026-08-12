@@ -1,5 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
+import { loadInScopeSources } from "@adversarylabs/sdk";
 import { observationFor } from "./rules.js";
 import { spec } from "./spec.js";
 const SKIPPED = new Set([".adversary", ".git", ".hg", ".next", ".svn", "coverage", "dist", "node_modules", "target", "vendor"]);
@@ -13,9 +14,15 @@ export async function analyzeRepository(ctx) {
             spec.files.some((glob) => matchesGlob(path, glob)),
         limit: MAX_FILES,
     });
-    const sources = scoped.map((file) => ({ path: file.path, source: file.content }));
+    const sources = scoped.map((file) => ({ path: file.path, source: file.content, inScope: true }));
     ctx.summary.files_scanned = sources.length;
-    const detections = spec.rules.flatMap((rule) => evaluate(rule, sources, allPaths));
+    const needsRepositoryContext = ctx.change !== null && ctx.change.scanMode === "changed";
+    const contextSources = needsRepositoryContext
+        ? await loadDependencyMetadataContext(ctx.repoPath, sources)
+        : sources;
+    const detections = spec.rules.flatMap((rule) => rule.match.kind === "direct-dependency-drift"
+        ? findDirectDependencyDrift(rule, contextSources)
+        : evaluate(rule, sources, allPaths));
     detections.sort((a, b) => a.rule.id.localeCompare(b.rule.id) || a.file.localeCompare(b.file) || a.line - b.line || a.label.localeCompare(b.label));
     for (const detection of detections)
         ctx.observe(observationFor(detection));
@@ -36,9 +43,9 @@ function evaluate(rule, sources, allPaths) {
             return [];
         return [{ rule, file: triggers[0] ?? ".", line: 1, snippet: triggers[0] ?? "", label: rule.title, data: { triggerFiles: triggers.slice(0, 10), requiredFiles: match.requiredFiles } }];
     }
-    const matchingSources = sources.filter((file) => match.files.some((glob) => matchesGlob(file.path, glob)));
     if (match.kind === "direct-dependency-drift")
-        return findDirectDependencyDrift(rule, matchingSources);
+        return [];
+    const matchingSources = sources.filter((file) => match.files.some((glob) => matchesGlob(file.path, glob)));
     if (match.kind === "missing-content") {
         return matchingSources.flatMap((file) => {
             if (!test(file.source, match.trigger) || test(file.source, match.required))
@@ -57,6 +64,18 @@ function evaluate(rule, sources, allPaths) {
             return [];
         return [{ rule, file: file.path, ...location, label: rule.title, data: { matchedPattern: match.pattern.pattern } }];
     });
+}
+async function loadDependencyMetadataContext(repoPath, scoped) {
+    const byPath = new Map(scoped.map((source) => [source.path, source]));
+    const context = await loadInScopeSources(repoPath, null, {
+        include: (path) => /(^|\/)(?:package|package-lock|npm-shrinkwrap)\.json$/.test(path),
+        limit: MAX_FILES,
+    });
+    for (const source of context) {
+        if (!byPath.has(source.path))
+            byPath.set(source.path, { path: source.path, source: source.content, inScope: false });
+    }
+    return [...byPath.values()];
 }
 function findDirectDependencyDrift(rule, sources) {
     const byPath = new Map(sources.map((source) => [source.path, source]));
@@ -82,6 +101,8 @@ function findDirectDependencyDrift(rule, sources) {
             const manifestPath = lockKey === "" ? joinPath(root, "package.json") : joinPath(root, `${lockKey}/package.json`);
             const manifestSource = byPath.get(manifestPath);
             if (!manifestSource)
+                continue;
+            if (!lockfile.inScope && !manifestSource.inScope)
                 continue;
             let manifest;
             try {

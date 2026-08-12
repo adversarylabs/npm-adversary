@@ -1,13 +1,13 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
-import { type RuleContext } from "@adversarylabs/sdk";
+import { loadInScopeSources, type RuleContext } from "@adversarylabs/sdk";
 import { observationFor } from "./rules.js";
 import { spec, type MatchExpression, type RuleSpec } from "./spec.js";
 
 const SKIPPED = new Set([".adversary", ".git", ".hg", ".next", ".svn", "coverage", "dist", "node_modules", "target", "vendor"]);
 const MAX_FILES = 5000;
 
-interface SourceFile { path: string; source: string }
+interface SourceFile { path: string; source: string; inScope: boolean }
 interface Detection { rule: RuleSpec; file: string; line: number; snippet: string; label: string; data: Record<string, unknown> }
 const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const;
 
@@ -20,10 +20,16 @@ export async function analyzeRepository(ctx: RuleContext): Promise<void> {
       spec.files.some((glob) => matchesGlob(path, glob)),
     limit: MAX_FILES,
   });
-  const sources: SourceFile[] = scoped.map((file) => ({ path: file.path, source: file.content }));
+  const sources: SourceFile[] = scoped.map((file) => ({ path: file.path, source: file.content, inScope: true }));
   ctx.summary.files_scanned = sources.length;
 
-  const detections = spec.rules.flatMap((rule) => evaluate(rule, sources, allPaths));
+  const needsRepositoryContext = ctx.change !== null && ctx.change.scanMode === "changed";
+  const contextSources = needsRepositoryContext
+    ? await loadDependencyMetadataContext(ctx.repoPath, sources)
+    : sources;
+  const detections = spec.rules.flatMap((rule) => rule.match.kind === "direct-dependency-drift"
+    ? findDirectDependencyDrift(rule, contextSources)
+    : evaluate(rule, sources, allPaths));
   detections.sort((a, b) => a.rule.id.localeCompare(b.rule.id) || a.file.localeCompare(b.file) || a.line - b.line || a.label.localeCompare(b.label));
   for (const detection of detections) ctx.observe(observationFor(detection));
 
@@ -44,10 +50,9 @@ function evaluate(rule: RuleSpec, sources: SourceFile[], allPaths: string[]): De
     if (triggers.length === 0 || required) return [];
     return [{ rule, file: triggers[0] ?? ".", line: 1, snippet: triggers[0] ?? "", label: rule.title, data: { triggerFiles: triggers.slice(0, 10), requiredFiles: match.requiredFiles } }];
   }
+  if (match.kind === "direct-dependency-drift") return [];
 
   const matchingSources = sources.filter((file) => match.files.some((glob) => matchesGlob(file.path, glob)));
-  if (match.kind === "direct-dependency-drift") return findDirectDependencyDrift(rule, matchingSources);
-
   if (match.kind === "missing-content") {
     return matchingSources.flatMap((file) => {
       if (!test(file.source, match.trigger) || test(file.source, match.required)) return [];
@@ -63,6 +68,18 @@ function evaluate(rule: RuleSpec, sources: SourceFile[], allPaths: string[]): De
     if (location === undefined) return [];
     return [{ rule, file: file.path, ...location, label: rule.title, data: { matchedPattern: match.pattern.pattern } }];
   });
+}
+
+async function loadDependencyMetadataContext(repoPath: string, scoped: SourceFile[]): Promise<SourceFile[]> {
+  const byPath = new Map(scoped.map((source) => [source.path, source]));
+  const context = await loadInScopeSources(repoPath, null, {
+    include: (path) => /(^|\/)(?:package|package-lock|npm-shrinkwrap)\.json$/.test(path),
+    limit: MAX_FILES,
+  });
+  for (const source of context) {
+    if (!byPath.has(source.path)) byPath.set(source.path, { path: source.path, source: source.content, inScope: false });
+  }
+  return [...byPath.values()];
 }
 
 function findDirectDependencyDrift(rule: RuleSpec, sources: SourceFile[]): Detection[] {
@@ -84,6 +101,7 @@ function findDirectDependencyDrift(rule: RuleSpec, sources: SourceFile[]): Detec
       const manifestPath = lockKey === "" ? joinPath(root, "package.json") : joinPath(root, `${lockKey}/package.json`);
       const manifestSource = byPath.get(manifestPath);
       if (!manifestSource) continue;
+      if (!lockfile.inScope && !manifestSource.inScope) continue;
       let manifest: Record<string, unknown> | undefined;
       try { manifest = asRecord(JSON.parse(manifestSource.source)); } catch { continue; }
       const lockPackage = asRecord(rawLockPackage);
