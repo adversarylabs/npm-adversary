@@ -7,6 +7,7 @@ interface ContentMatch {
     kind: "content";
     files: string[];
     pattern: MatchExpression;
+    anchors?: MatchExpression[];
     requires: MatchExpression[];
 }
 interface MissingContentMatch {
@@ -214,6 +215,10 @@ export declare const spec: {
                 readonly pattern: "\\\"dependencies\\\"\\s*:\\s*\\{[^}]{0,800}\\\"[^\\\"]+\\\"\\s*:\\s*\\\"(?:\\*|latest|>=0\\.0\\.0)\\\"";
                 readonly flags: "i";
             };
+            readonly anchors: [{
+                readonly pattern: "\\\"[^\\\"]+\\\"\\s*:\\s*\\\"(?:\\*|latest|>=0\\.0\\.0)\\\"";
+                readonly flags: "i";
+            }];
             readonly requires: [];
         };
     }, {
@@ -252,6 +257,10 @@ export declare const spec: {
                 readonly pattern: "\\\"dependencies\\\"\\s*:\\s*\\{[^}]*git(?:\\+https?)?:[^\\\"']+#(?:main|master)[\\\"']";
                 readonly flags: "i";
             };
+            readonly anchors: [{
+                readonly pattern: "\\\"[^\\\"]+\\\"\\s*:\\s*\\\"git(?:\\+https?)?:[^\\\"']+#(?:main|master)[\\\"']";
+                readonly flags: "i";
+            }];
             readonly requires: [];
         };
     }];
