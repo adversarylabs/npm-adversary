@@ -14,6 +14,7 @@ Review npm projects for dangerous lifecycle scripts, auto-update cooldowns, and 
 
 - Dangerous install scripts
 - Lockfile integrity issues
+- Direct dependency drift between package manifests and npm lock package entries
 - Unsafe npm config
 
 ## Out of scope (not a miss for this adversary)

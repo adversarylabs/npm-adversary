@@ -1,0 +1,6 @@
+{
+  "name": "legacy-app",
+  "dependencies": {
+    "changed-package": "^2.0.0"
+  }
+}

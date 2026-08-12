@@ -23,7 +23,7 @@ Highlights:
 | --- | --- |
 | Lifecycle | curl|bash postinstall; obfuscated eval/base64 scripts |
 | Automation | Renovate/Dependabot automerge without release-age cooldown |
-| Integrity | Missing lockfile; * ranges; mutable git deps |
+| Integrity | Missing or stale lockfile; * ranges; mutable git deps |
 | Registry | HTTP registry URLs |
 
 ### Ownership boundaries

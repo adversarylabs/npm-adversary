@@ -1,0 +1,10 @@
+{
+  "name": "example-app",
+  "private": true,
+  "dependencies": {
+    "added-package": "^2.0.0"
+  },
+  "devDependencies": {
+    "changed-package": "^3.0.0"
+  }
+}

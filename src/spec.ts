@@ -4,10 +4,11 @@ export interface MatchExpression { pattern: string; flags: string }
 interface ContentMatch { kind: "content"; files: string[]; pattern: MatchExpression; requires: MatchExpression[] }
 interface MissingContentMatch { kind: "missing-content"; files: string[]; trigger: MatchExpression; required: MatchExpression }
 interface MissingFileMatch { kind: "missing-file"; triggerFiles: string[]; requiredFiles: string[] }
+interface DirectDependencyDriftMatch { kind: "direct-dependency-drift"; files: string[] }
 export interface RuleSpec {
   id: string; title: string; summary: string; category: string; severity: Severity; confidence: Confidence;
   whyItMatters: string; impact: string; recommendation: string; complexity: "trivial" | "small" | "medium" | "large"; tags: string[];
-  match: ContentMatch | MissingContentMatch | MissingFileMatch;
+  match: ContentMatch | MissingContentMatch | MissingFileMatch | DirectDependencyDriftMatch;
 }
 export interface AdversarySpec { id: string; displayName: string; description: string; files: string[]; rules: RuleSpec[] }
 
@@ -20,6 +21,8 @@ export const spec = {
     "**/package.json",
     "package-lock.json",
     "**/package-lock.json",
+    "npm-shrinkwrap.json",
+    "**/npm-shrinkwrap.json",
     ".npmrc",
     "**/.npmrc",
     "renovate.json",
@@ -200,6 +203,23 @@ export const spec = {
           "pattern": "minimumReleaseAge|cooldown\\s*:",
           "flags": "i"
         }
+      }
+    },
+    {
+      "id": "npm.direct-dependency-lock-drift",
+      "title": "Direct dependency metadata differs from npm lockfile",
+      "summary": "Direct dependency metadata differs from npm lockfile",
+      "category": "dependency-integrity",
+      "severity": "high",
+      "confidence": "high",
+      "whyItMatters": "npm ci requires package manifests and lockfile package entries to describe the same direct dependency contract.",
+      "impact": "Clean installs can fail, or install metadata that does not represent the reviewed manifest.",
+      "recommendation": "Regenerate and commit the npm lockfile with npm install --package-lock-only.",
+      "complexity": "trivial",
+      "tags": ["npm", "lockfile", "reproducibility"],
+      "match": {
+        "kind": "direct-dependency-drift",
+        "files": ["package.json", "**/package.json", "package-lock.json", "**/package-lock.json", "npm-shrinkwrap.json", "**/npm-shrinkwrap.json"]
       }
     },
     {

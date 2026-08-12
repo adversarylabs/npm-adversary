@@ -4,6 +4,7 @@ import { observationFor } from "./rules.js";
 import { spec } from "./spec.js";
 const SKIPPED = new Set([".adversary", ".git", ".hg", ".next", ".svn", "coverage", "dist", "node_modules", "target", "vendor"]);
 const MAX_FILES = 5000;
+const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
 export async function analyzeRepository(ctx) {
     // Full tree for existence/context checks; content uses CLI/SDK review scope.
     const allPaths = await walk(ctx.repoPath);
@@ -36,6 +37,8 @@ function evaluate(rule, sources, allPaths) {
         return [{ rule, file: triggers[0] ?? ".", line: 1, snippet: triggers[0] ?? "", label: rule.title, data: { triggerFiles: triggers.slice(0, 10), requiredFiles: match.requiredFiles } }];
     }
     const matchingSources = sources.filter((file) => match.files.some((glob) => matchesGlob(file.path, glob)));
+    if (match.kind === "direct-dependency-drift")
+        return findDirectDependencyDrift(rule, matchingSources);
     if (match.kind === "missing-content") {
         return matchingSources.flatMap((file) => {
             if (!test(file.source, match.trigger) || test(file.source, match.required))
@@ -55,6 +58,94 @@ function evaluate(rule, sources, allPaths) {
         return [{ rule, file: file.path, ...location, label: rule.title, data: { matchedPattern: match.pattern.pattern } }];
     });
 }
+function findDirectDependencyDrift(rule, sources) {
+    const byPath = new Map(sources.map((source) => [source.path, source]));
+    const detections = [];
+    const candidates = sources.filter((source) => /(^|\/)(?:package-lock|npm-shrinkwrap)\.json$/.test(source.path));
+    const shrinkwrapRoots = new Set(candidates.filter((source) => source.path.endsWith("npm-shrinkwrap.json")).map((source) => dirname(source.path)));
+    const lockfiles = candidates.filter((source) => source.path.endsWith("npm-shrinkwrap.json") || !shrinkwrapRoots.has(dirname(source.path)));
+    for (const lockfile of lockfiles) {
+        const root = dirname(lockfile.path);
+        let lock;
+        try {
+            lock = asRecord(JSON.parse(lockfile.source));
+        }
+        catch {
+            continue;
+        }
+        const packages = asRecord(lock?.packages);
+        if (!packages)
+            continue;
+        for (const [lockKey, rawLockPackage] of Object.entries(packages)) {
+            if (lockKey.includes("node_modules"))
+                continue;
+            const manifestPath = lockKey === "" ? joinPath(root, "package.json") : joinPath(root, `${lockKey}/package.json`);
+            const manifestSource = byPath.get(manifestPath);
+            if (!manifestSource)
+                continue;
+            let manifest;
+            try {
+                manifest = asRecord(JSON.parse(manifestSource.source));
+            }
+            catch {
+                continue;
+            }
+            const lockPackage = asRecord(rawLockPackage);
+            if (!manifest || !lockPackage)
+                continue;
+            for (const field of DEPENDENCY_FIELDS) {
+                const manifestDependencies = stringMap(manifest[field]);
+                const lockedDependencies = stringMap(lockPackage[field]);
+                const names = [...new Set([...Object.keys(manifestDependencies), ...Object.keys(lockedDependencies)])].sort();
+                for (const name of names) {
+                    const declared = manifestDependencies[name];
+                    const locked = lockedDependencies[name];
+                    if (declared === locked)
+                        continue;
+                    const change = declared === undefined ? "removed" : locked === undefined ? "missing" : "changed";
+                    const index = declared === undefined ? locateLockPackageKey(lockfile.source, lockKey, field, name) : locateJsonKey(manifestSource.source, name, field);
+                    const evidenceSource = declared === undefined ? lockfile : manifestSource;
+                    detections.push({
+                        rule,
+                        file: evidenceSource.path,
+                        ...locateFromIndex(evidenceSource.source, index),
+                        label: `${name} ${change} between ${manifestPath} and ${lockfile.path}`,
+                        data: { dependency: name, dependencyType: field, manifestSpec: declared ?? null, lockfileSpec: locked ?? null, manifest: manifestPath, lockfile: lockfile.path, drift: change },
+                    });
+                }
+            }
+        }
+    }
+    return detections;
+}
+function dirname(path) {
+    const index = path.lastIndexOf("/");
+    return index < 0 ? "" : path.slice(0, index);
+}
+function joinPath(root, path) {
+    return root ? `${root}/${path}` : path;
+}
+function asRecord(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? value : undefined;
+}
+function stringMap(value) {
+    const record = asRecord(value);
+    if (!record)
+        return {};
+    return Object.fromEntries(Object.entries(record).filter((entry) => typeof entry[1] === "string"));
+}
+function locateJsonKey(source, key, field) {
+    const fieldIndex = source.indexOf(JSON.stringify(field));
+    const keyIndex = source.indexOf(JSON.stringify(key), Math.max(0, fieldIndex));
+    return keyIndex >= 0 ? keyIndex : Math.max(0, fieldIndex);
+}
+function locateLockPackageKey(source, lockKey, field, key) {
+    const packagesIndex = source.indexOf('"packages"');
+    const packageIndex = source.indexOf(`${JSON.stringify(lockKey)}: {`, Math.max(0, packagesIndex));
+    const fieldIndex = source.indexOf(JSON.stringify(field), Math.max(0, packageIndex));
+    const keyIndex = source.indexOf(JSON.stringify(key), Math.max(0, fieldIndex));
+    return keyIndex >= 0 ? keyIndex : Math.max(0, fieldIndex);
+}
 function test(source, expression) {
     return new RegExp(expression.pattern, expression.flags).test(source);
 }
@@ -63,6 +154,10 @@ function locate(source, expression) {
     if (match?.index === undefined)
         return undefined;
     const line = source.slice(0, match.index).split(/\r?\n/).length;
+    return { line, snippet: source.split(/\r?\n/)[line - 1]?.trim().slice(0, 240) ?? "" };
+}
+function locateFromIndex(source, index) {
+    const line = source.slice(0, index).split(/\r?\n/).length;
     return { line, snippet: source.split(/\r?\n/)[line - 1]?.trim().slice(0, 240) ?? "" };
 }
 async function walk(root) {
