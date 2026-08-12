@@ -7,6 +7,8 @@ export const spec = {
         "**/package.json",
         "package-lock.json",
         "**/package-lock.json",
+        "npm-shrinkwrap.json",
+        "**/npm-shrinkwrap.json",
         ".npmrc",
         "**/.npmrc",
         "renovate.json",
@@ -187,6 +189,23 @@ export const spec = {
                     "pattern": "minimumReleaseAge|cooldown\\s*:",
                     "flags": "i"
                 }
+            }
+        },
+        {
+            "id": "npm.direct-dependency-lock-drift",
+            "title": "Direct dependency metadata differs from npm lockfile",
+            "summary": "Direct dependency metadata differs from npm lockfile",
+            "category": "dependency-integrity",
+            "severity": "high",
+            "confidence": "high",
+            "whyItMatters": "npm ci requires package manifests and lockfile package entries to describe the same direct dependency contract.",
+            "impact": "Clean installs can fail, or install metadata that does not represent the reviewed manifest.",
+            "recommendation": "Regenerate and commit the npm lockfile with npm install --package-lock-only.",
+            "complexity": "trivial",
+            "tags": ["npm", "lockfile", "reproducibility"],
+            "match": {
+                "kind": "direct-dependency-drift",
+                "files": ["package.json", "**/package.json", "package-lock.json", "**/package-lock.json", "npm-shrinkwrap.json", "**/npm-shrinkwrap.json"]
             }
         },
         {

@@ -20,6 +20,10 @@ interface MissingFileMatch {
     triggerFiles: string[];
     requiredFiles: string[];
 }
+interface DirectDependencyDriftMatch {
+    kind: "direct-dependency-drift";
+    files: string[];
+}
 export interface RuleSpec {
     id: string;
     title: string;
@@ -32,7 +36,7 @@ export interface RuleSpec {
     recommendation: string;
     complexity: "trivial" | "small" | "medium" | "large";
     tags: string[];
-    match: ContentMatch | MissingContentMatch | MissingFileMatch;
+    match: ContentMatch | MissingContentMatch | MissingFileMatch | DirectDependencyDriftMatch;
 }
 export interface AdversarySpec {
     id: string;
@@ -45,7 +49,7 @@ export declare const spec: {
     readonly id: "npm";
     readonly displayName: "npm";
     readonly description: "Reviews npm projects for dangerous lifecycle scripts, auto-update cooldowns, and lockfile integrity.";
-    readonly files: ["package.json", "**/package.json", "package-lock.json", "**/package-lock.json", ".npmrc", "**/.npmrc", "renovate.json", ".github/renovate.json5", ".github/dependabot.yml"];
+    readonly files: ["package.json", "**/package.json", "package-lock.json", "**/package-lock.json", "npm-shrinkwrap.json", "**/npm-shrinkwrap.json", ".npmrc", "**/.npmrc", "renovate.json", ".github/renovate.json5", ".github/dependabot.yml"];
     readonly rules: [{
         readonly id: "npm.lifecycle-remote-exec";
         readonly title: "Lifecycle script downloads and executes remote code";
@@ -174,6 +178,22 @@ export declare const spec: {
                 readonly pattern: "minimumReleaseAge|cooldown\\s*:";
                 readonly flags: "i";
             };
+        };
+    }, {
+        readonly id: "npm.direct-dependency-lock-drift";
+        readonly title: "Direct dependency metadata differs from npm lockfile";
+        readonly summary: "Direct dependency metadata differs from npm lockfile";
+        readonly category: "dependency-integrity";
+        readonly severity: "high";
+        readonly confidence: "high";
+        readonly whyItMatters: "npm ci requires package manifests and lockfile package entries to describe the same direct dependency contract.";
+        readonly impact: "Clean installs can fail, or install metadata that does not represent the reviewed manifest.";
+        readonly recommendation: "Regenerate and commit the npm lockfile with npm install --package-lock-only.";
+        readonly complexity: "trivial";
+        readonly tags: ["npm", "lockfile", "reproducibility"];
+        readonly match: {
+            readonly kind: "direct-dependency-drift";
+            readonly files: ["package.json", "**/package.json", "package-lock.json", "**/package-lock.json", "npm-shrinkwrap.json", "**/npm-shrinkwrap.json"];
         };
     }, {
         readonly id: "npm.unbounded-dependency";

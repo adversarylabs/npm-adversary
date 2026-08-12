@@ -55,6 +55,17 @@ Public grounding: historical npm supply-chain incidents (**event-stream** 2018, 
 
 ## High
 
+### `npm.direct-dependency-lock-drift`
+
+| | |
+| --- | --- |
+| **What** | A package manifest's direct dependency map differs from its npm v2/v3 lockfile package entry |
+| **Why** | `npm ci` requires the manifest and lockfile to agree; the lockfile otherwise no longer represents the reviewed dependency contract |
+| **Looks for** | Added, removed, or changed specs in `dependencies`, `devDependencies`, `optionalDependencies`, or `peerDependencies`, for both root and workspace package entries |
+| **Stays quiet when** | Direct maps match; only transitive metadata differs; the lockfile is v1; JSON is malformed; or no lock package entry covers the manifest |
+| **Public examples** | [OpenTelemetry's approved lockfile repair](https://github.com/open-telemetry/opentelemetry-js-contrib/pull/3067); [npm ci's synchronization contract](https://docs.npmjs.com/cli/v8/commands/npm-ci/). A [broader Grafana drift proposal](https://github.com/grafana/plugin-ci-workflows/pull/396) was rejected when changes were only transitive metadata, which is intentionally excluded here. |
+| **Remediation** | Run `npm install --package-lock-only` with the project's committed npm settings and commit the resulting lockfile |
+
 ### `npm.script-curl-pipe`
 
 | | |

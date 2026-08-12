@@ -1,0 +1,11 @@
+{
+  "name": "example-app",
+  "private": true,
+  "dependencies": {
+    "runtime-package": "^2.0.0"
+  },
+  "devDependencies": {
+    "build-package": "~3.1.0"
+  },
+  "workspaces": ["packages/*"]
+}
