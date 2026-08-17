@@ -1,5 +1,5 @@
 name: deps/npm
-version: 0.0.9
+version: 0.0.10
 description: Reviews npm projects for dangerous lifecycle scripts, auto-update cooldowns, and lockfile integrity.
 
 triggers:
