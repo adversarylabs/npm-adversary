@@ -1,4 +1,4 @@
-name: deps/npm
+name: adversarylabs/deps/npm
 version: 0.0.10
 description: Reviews npm projects for dangerous lifecycle scripts, auto-update cooldowns, and lockfile integrity.
 
