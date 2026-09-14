@@ -4,7 +4,7 @@ This artifact bundles the following packages. The notices are generated from
 the exact esbuild metafile inputs; the build fails if a package has no notice.
 
 ================================================================================
-Package: @adversarylabs/sdk@0.1.16
+Package: @adversarylabs/sdk@0.1.19
 
 --- LICENSE ---
 
